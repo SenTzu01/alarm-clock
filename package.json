@@ -1,0 +1,35 @@
+{
+  "name": "alarm-clock",
+  "version": "0.0.1",
+  "description": "Smart home Alarm clock with remote management",
+  "main": "alarm-clock.js",
+  "files": [
+    "alarm-clock.js",
+    "lib"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SenTzu01/alarm-clock.git"
+  },
+  "keywords": [
+    "Smart",
+    "Home",
+    "Alarm",
+    "Clock"
+  ],
+  "author": "SenTzu01",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SenTzu01/alarm-clock/issues"
+  },
+  "homepage": "https://github.com/SenTzu01/alarm-clock#readme",
+  "dependencies": {
+    "coffee-cache": "^1.0.2",
+    "coffeescript": "^2.4.1",
+    "express": "^4.17.1"
+  }
+}
