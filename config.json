@@ -47,7 +47,7 @@
     "smartHome": {
       "user": "----",
       "passwd": "----",
-      "host": "pimatic.wigmans.net",
+      "host": "----",
       "endPoint": "/api/device/activiteiten/buttonPressed?buttonId=b-opstaan"
     }
   },
