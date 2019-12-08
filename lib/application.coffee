@@ -26,6 +26,9 @@ module.exports = () ->
       ]
       
       @_player = new Mplayer()
+      
+      @updateCron(@settings.schedule.days)
+      
       @_rest = new restAPI()
       @_rest.init(3000, @)
       @_rest.on('stopAlarm', @stopAlarm)
@@ -110,27 +113,25 @@ module.exports = () ->
       console.log(obj.nextInvocation().toString()) for job, obj of @_jobs
     
     _playAudio: (resource) =>
-      @_volume = {
-        min: 0,
-        max: 35,
-        next: 0
-      }
-      time = 60 * 1000
-      @_interval = 2 * 1000
-      @_increment = Math.round( (@_volume.max - @_volume.min) / (time / @_interval) )
+      @_volumeNext = 0
+      @_increment = Math.round( (@settings.config.volume.max - @settings.config.volume.min) / (@settings.config.volume.increaseTimer / @settings.config.volume.increaseInterval) )
+      
+      console.log('Increase interval: ' + @settings.config.volume.increaseInterval)
+      console.log('Volume increment: ' + @_increment)
       
       @_player.openFile(resource)
-      @_player.volume(@_volume.min)
+      @_player.volume(@settings.config.volume.min)
       @_player.play()
       
-      @_volIncrease = setTimeout(@_autoIncreaseVolume, @_interval, @_volume.next)
+      @_volIncrease = setTimeout(@_autoIncreaseVolume, @settings.config.volume.increaseInterval*1000, @_volumeNext)
       
     _autoIncreaseVolume: (volume) =>
       @_player.volume(volume)
-      @_volume.next += @_increment
+      @_volumeNext += @_increment
       
-      if @_volume.next <= @_volume.max
-        @_volIncrease = setTimeout(@_autoIncreaseVolume, @_interval, @_volume.next)
+      if @_volumeNext <= @settings.config.volume.max
+        console.log(@_volumeNext)
+        @_volIncrease = setTimeout(@_autoIncreaseVolume, @settings.config.volume.increaseInterval*1000, @_volumeNext)
     
     _saveConfig: (settings, file) =>
       settings ?= @settings
