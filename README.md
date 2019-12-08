@@ -4,7 +4,7 @@ WORK IN PROGRESS
 ## Smart Alarm clock application
 * Coffeescript on NodeJS
 * Runs on a webserver
-* Exposes REST API (To be documented, but config-default.json is rather self-explaining) Default is http://<host>:3000/api/<endpoints>
+* Exposes REST API (To be documented, but config-default.json is rather self-explaining) Default is http://\<host\>:3000/api/<endpoints>
 * Maintains recurring schedule for all weekdays, with attributes per day for audio resource, enabled/disabled, and wake-up time
 * Able to trigger a Smart home server via its REST interface (Currently focussed on Pimatic)
 
