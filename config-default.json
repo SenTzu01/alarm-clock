@@ -49,6 +49,12 @@
       "passwd": "",
       "host": "",
       "endPoint": ""
+    },
+    "volume": {
+      "min": 0,
+      "max": 35,
+      "increaseTimer": 180,
+      "increaseInterval": 5
     }
   },
   "schedule": {
