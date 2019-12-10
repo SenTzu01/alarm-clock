@@ -103,12 +103,10 @@ module.exports = () ->
           rule.minute = time[1]
           
           j = Cron.scheduleJob(rule, () =>
-            console.log(Date().toString())
             @activateAlarm(day)
           )
           @_jobs[day.id] = j
       )
-      console.log(Date().toString())
       console.log('Updated Alarm Schedule:')
       console.log(obj.nextInvocation().toString()) for job, obj of @_jobs
     
