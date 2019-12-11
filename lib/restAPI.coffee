@@ -50,9 +50,31 @@ module.exports = () ->
       update.resource ?= day.resource
       
       @_main.settings.schedule.days.splice(dayIndex, 1, update)
+      @_logUpdate(id, update)
+      @_emitConfigUpdate()
       
-      @emit('configUpdated', @_main.settings)
       return update
+    
+    updateConfig: (id, update) =>
+      success = true
+      settings = @_main.settings.config[id]
+      
+      return null if !typeof(settings) is "object"
+      
+      for key, value of update
+        do (key, value) =>
+          if settings[key]?
+            settings[key] = value
+          else
+            success = false
+      
+      return null if !success
+      
+      @_main.settings.config[id] = settings
+      @_logUpdate(id, @_main.settings.config[id])
+      @_emitConfigUpdate()
+      
+      return settings
 
     stopAlarm: () =>
       @emit('stopAlarm')
@@ -91,6 +113,14 @@ module.exports = () ->
       @_httpServer.listen(@_PORT, () =>
         console.log('Server is running on PORT:',@_PORT)
       )
+    
+    _logUpdate: (item, update) ->
+      console.log('Config update received:')
+      console.log(item)
+      console.log(update)
+    
+    _emitConfigUpdate: () =>
+      @emit('configUpdated', @_main.settings)
     
     _restResponse: (rest, req) =>
       response = {
