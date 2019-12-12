@@ -9,8 +9,8 @@ module.exports = () ->
     constructor: () ->
       super()
     
-    init: (port, @_settings) ->
-      @_PORT = port || 3000
+    init: (@_settings) ->
+      @_PORT = @_settings.config.httpServer.port || 3000
       @_httpServer = express()
       
       @_httpServer.use(express.json())
