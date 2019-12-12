@@ -9,14 +9,13 @@ module.exports = () ->
     
     constructor: () ->
       super()
-      
+    
     init: (port, @_main) ->
       @_PORT = port || 3000
       @_httpServer = express()
       
       @_httpServer.use(express.json())
       @_httpServer.use(express.urlencoded({ extended: true }))
-      
     
     getSmartHomeConfig: () =>
       return @_main.settings.config.smartHome
@@ -109,7 +108,7 @@ module.exports = () ->
           res.status(status).send(@_restResponse(rest, req))
         )
       )
-      
+      console.log('API enabled.')
       @_httpServer.listen(@_PORT, () =>
         console.log('Server is running on PORT:',@_PORT)
       )

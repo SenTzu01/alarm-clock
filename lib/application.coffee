@@ -54,7 +54,7 @@ module.exports = () ->
           error = new Error('Invalid content type\nExpected application/json but got ' + contentType)
         
         if error?
-          console.log(error.message)
+          console.error(error.message)
           res.resume()
           return
         
@@ -77,6 +77,7 @@ module.exports = () ->
     
     stopAlarm: () =>
       @_player.stop()
+      @_player.removeAllListeners('status')
       clearTimeout(@_volIncrease)
     
     updateConfig: (settings) =>
@@ -137,13 +138,16 @@ module.exports = () ->
       
       fs.writeFile(file, JSON.stringify(settings, null, 2), (err) =>
         if err?
-          return console.log('Error writing config file:' + err)
+          return console.error('Error writing config file:' + err)
         )
     
     destroy: () ->
-      @_player.removeAllListeners('status')
-      @_rest.removeListener('stopAlarm', @stopAlarm)
-      @_rest.removeListener('activateAlarm', @activateAlarm)
-      @_rest.removeListener('configUpdated', @updateConfig)
+      return new Promise( (resolve, reject) =>
+        @_player.removeAllListeners('status')
+        @_rest.removeAllListeners('stopAlarm')
+        @_rest.removeAllListeners('activateAlarm')
+        @_rest.removeAllListeners('configUpdated')
+        resolve()
+      )
   
   return new Application

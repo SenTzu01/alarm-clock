@@ -1,7 +1,7 @@
 /var/log/alarm-clock {
     daily
     rotate 7
-    size 1M
     compress
     delaycompress
+    notifempty
 }
