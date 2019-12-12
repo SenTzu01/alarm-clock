@@ -30,7 +30,7 @@ module.exports = () ->
       @updateCron(@settings.schedule.days)
       
       @_rest = new restAPI()
-      @_rest.init(3000, @)
+      @_rest.init(@settings.config.httpServer.port, @)
       @_rest.on('stopAlarm', @stopAlarm)
       @_rest.on('activateAlarm', @activateAlarm)
       @_rest.on('configUpdated', @updateConfig)

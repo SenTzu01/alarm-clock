@@ -44,6 +44,9 @@
     }
   ],
   "config": {
+    "httpServer": {
+      "port": 3000
+    },
     "smartHome": {
       "user": "",
       "passwd": "",
