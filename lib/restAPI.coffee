@@ -4,39 +4,38 @@ module.exports = () ->
   EventsEmitter = require('events')
   express = require('express')
   
-  
   class RestApi extends EventsEmitter
     
     constructor: () ->
       super()
     
-    init: (port, @_main) ->
+    init: (port, @_settings) ->
       @_PORT = port || 3000
       @_httpServer = express()
       
       @_httpServer.use(express.json())
       @_httpServer.use(express.urlencoded({ extended: true }))
-    
+      
     getSmartHomeConfig: () =>
-      return @_main.settings.config.smartHome
+      return @_settings.config.smartHome
     
     getSchedule: () =>
-      return @_main.settings.schedule.days
+      return @_settings.schedule.days
     
     getDay: (d) =>
       day = null
-      @_main.settings.schedule.days.map( (item) =>
+      @_settings.schedule.days.map( (item) =>
         day = item if d is item.id
       )
       return day
     
     getConfig: () =>
-      return @_main.settings.config
+      return @_settings.config
     
     updateSchedule: (id, update) =>
       day = null
       dayIndex = null
-      @_main.settings.schedule.days.map( (schedule, index) =>
+      @_settings.schedule.days.map( (schedule, index) =>
         if schedule.id is id
           day = schedule
           dayIndex = index
@@ -48,7 +47,7 @@ module.exports = () ->
       update.enabled  ?= day.enabled
       update.resource ?= day.resource
       
-      @_main.settings.schedule.days.splice(dayIndex, 1, update)
+      @_settings.schedule.days.splice(dayIndex, 1, update)
       @_logUpdate(id, update)
       @_emitConfigUpdate()
       
@@ -56,7 +55,7 @@ module.exports = () ->
     
     updateConfig: (id, update) =>
       success = true
-      settings = @_main.settings.config[id]
+      settings = @_settings.config[id]
       
       return null if !typeof(settings) is "object"
       
@@ -69,8 +68,8 @@ module.exports = () ->
       
       return null if !success
       
-      @_main.settings.config[id] = settings
-      @_logUpdate(id, @_main.settings.config[id])
+      @_settings.config[id] = settings
+      @_logUpdate(id, @_settings.config[id])
       @_emitConfigUpdate()
       
       return settings
@@ -82,7 +81,7 @@ module.exports = () ->
     activateAlarm: () =>
       resource = null
       today = @getTodayAsString()
-      @_main.settings.schedule.days.map( (day) =>
+      @_settings.schedule.days.map( (day) =>
         resource = day.resource if day.id is today
       )
       
@@ -90,7 +89,7 @@ module.exports = () ->
         response: 'Alarm activated',
         today,
         resource,
-        endPoint: 'http://' + @_main.settings.config.smartHome.user + ':' + @_main.settings.config.smartHome.passwd + '@' + @_main.settings.config.smartHome.host + @_main.settings.config.smartHome.endPoint
+        endPoint: 'http://' + @_settings.config.smartHome.user + ':' + @_settings.config.smartHome.passwd + '@' + @_settings.config.smartHome.host + @_settings.config.smartHome.endPoint
       }
       @emit('activateAlarm', data)
       
@@ -99,7 +98,7 @@ module.exports = () ->
     
     startServer: () =>
       
-      @_main.settings.rest.map( (rest) =>
+      @_settings.rest.map( (rest) =>
         status = 200
         if rest.http is "PUT"
           status = 201
@@ -119,7 +118,7 @@ module.exports = () ->
       console.log(update)
     
     _emitConfigUpdate: () =>
-      @emit('configUpdated', @_main.settings)
+      @emit('configUpdated', @_settings)
     
     _restResponse: (rest, req) =>
       response = {
@@ -140,8 +139,8 @@ module.exports = () ->
       today = null
       
       date = new Date()
-      @_main.settings.schedule.days.map( (day) =>
-        if day.id is @_main.weekdays[date.getDay()]
+      @_settings.schedule.days.map( (day) =>
+        if day.id is @_weekdays[date.getDay()]
           today = day.id
       )
       return today
