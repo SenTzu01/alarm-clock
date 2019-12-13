@@ -55,7 +55,7 @@
       "static_dir": "html"
     },
     "smartHome": {
-      "user": "",
+      "user": ",
       "passwd": "",
       "host": "",
       "trigger": {
@@ -66,15 +66,17 @@
       "presence": {
         "method": "GET",
         "params": {},
-        "endPoint": "",
+        "endPoint": "/api/variables/sensor-aanwezigheid.presence",
         "data": "variable.value"
       }
     },
-    "volume": {
-      "min": 0,
-      "max": 35,
-      "increaseTimer": 180,
-      "increaseInterval": 4
+    "playback": {
+      "volume": {
+        "min": 0,
+        "max": 35,
+        "increaseTimer": 180
+      },
+      "fallback": "<absolute-path-to-local-audio-file>"
     }
   },
   "schedule": {

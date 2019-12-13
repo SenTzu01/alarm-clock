@@ -29,7 +29,6 @@ module.exports = () ->
       @_httpServer.use(express.static(@settings.config.httpServer.static_dir))
       
       @_player = new Mplayer()
-      
       @updateCron(@settings.schedule.days)
       
       @_rest = new restAPI()
@@ -123,7 +122,7 @@ module.exports = () ->
       @_saveConfig(settings)
       @settings = require(@_appConfig)
       @updateCron(@settings.schedule.days)
-      
+    
     updateCron: (days) =>
       days.map( (day) =>
         @_jobs[day.id].cancel() if @_jobs[day.id]?
@@ -151,24 +150,49 @@ module.exports = () ->
     
     setVolume: (volume) =>
       @_player.volume(volume)
+      console.log('Volume set to: ' + volume)
     
     _playAudio: (resource) =>
-      @_increment = Math.round( (@settings.config.volume.max - @settings.config.volume.min) / (@settings.config.volume.increaseTimer / @settings.config.volume.increaseInterval) )
-      
-      @setVolume(@settings.config.volume.min)
-      @_volumeNext = @_increment
-      
+      playing = false
+      @_player.once('start', () => playing = true )
+      @_player.stop()
+      @_player.volume(@settings.config.playback.volume.min)
       @_player.openFile(resource)
       @_player.play()
       
-      @_volIncrease = setTimeout(@_autoIncreaseVolume, @settings.config.volume.increaseInterval*1000, @_volumeNext)
+      # Workaround as MPlayer has no decent error events. So what if internet connection is not available?
+      # Check if playback started after 2 seconds, else play backup file
+      setTimeout( ( () =>
+        if !playing
+          console.log('Unable to play: ' + resource)
+          @stopAlarm()
+          fs.access(@settings.config.playback.fallback, fs.constants.R_OK, (err) =>
+            if err?
+              console.log('Panic! Cannot open ' + @settings.config.playback.fallback + '. You are on your own now!')
+            else
+              console.log('Falling back to: ' + @settings.config.playback.fallback)
+              @_playAudio(@settings.config.playback.fallback)
+          )
+        
+        else
+          console.log('Playback of ' + resource + ' started successfully...')
+      ), 2000)
       
-    _autoIncreaseVolume: (volume) =>
-      @setVolume(volume)
-      @_volumeNext += @_increment
+      interval = Math.round(@settings.config.playback.volume.increaseTimer / (@settings.config.playback.volume.max - @settings.config.playback.volume.min) * 1000)
+      @_increaseVolume(interval)
+    
+    _increaseVolume: (interval) =>
+      volume = @settings.config.playback.volume.min + 1
+      @_player.volume(volume)
       
-      if @_volumeNext <= @settings.config.volume.max
-        @_volIncrease = setTimeout(@_autoIncreaseVolume, @settings.config.volume.increaseInterval*1000, @_volumeNext)
+      autoIncrease = (volume) =>
+        console.log(volume)
+        @_player.volume(volume)
+        
+        volume += 1
+        if volume <= @settings.config.playback.volume.max
+          @_volIncrease = setTimeout(autoIncrease, interval, volume)
+      @_volIncrease = setTimeout(autoIncrease, interval, volume)
     
     _saveConfig: (settings, file) =>
       settings ?= @settings
