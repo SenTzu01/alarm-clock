@@ -66,7 +66,7 @@
       "presence": {
         "method": "GET",
         "params": {},
-        "endPoint": "/api/variables/sensor-aanwezigheid.presence",
+        "endPoint": "",
         "data": "variable.value"
       }
     },
