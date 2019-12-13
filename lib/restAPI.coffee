@@ -1,4 +1,3 @@
-
 module.exports = () ->
   
   EventsEmitter = require('events')
@@ -9,13 +8,26 @@ module.exports = () ->
     constructor: () ->
       super()
     
-    init: (@_settings) ->
-      @_PORT = @_settings.config.httpServer.port || 3000
-      @_httpServer = express()
-      
+    init: (@_httpServer, @_settings) ->
       @_httpServer.use(express.json())
       @_httpServer.use(express.urlencoded({ extended: true }))
+    
+    startServer: (port) =>
       
+      @_settings.rest.map( (rest) =>
+        status = 200
+        if rest.http is "PUT"
+          status = 201
+        
+        @_httpServer[rest.http.toLowerCase()]('/api' + rest.endPoint + rest.params, (req, res) =>
+          res.status(status).send(@_restResponse(rest, req))
+        )
+      )
+      console.log('API enabled.')
+      @_httpServer.listen(port, () =>
+        console.log('Server is running on PORT:', port)
+      )
+    
     getSmartHomeConfig: () =>
       return @_settings.config.smartHome
     
@@ -73,44 +85,28 @@ module.exports = () ->
       @_emitConfigUpdate()
       
       return settings
-
-    stopAlarm: () =>
+    
+    setVolume: (id, params) =>
+      return null if typeof(params.value) != "number" || params.value > @_settings.config.volume.max || params.value < @_settings.config.volume.min
+      
+      @emit('setVolume', params.value)
+      return @_responseObject("Volume set")
+    
+    toggleAlarm: (id, params) =>
+      return @_activateAlarm(params) if id is "start"
+      return @_stopAlarm(params)
+    
+    _stopAlarm: (params) =>
+      return null if typeof(params) != "object"
+      
       @emit('stopAlarm')
-      return { response: "Alarm stopped" }
+      return @_responseObject("Alarm stopped")
     
-    activateAlarm: () =>
-      resource = null
-      today = @getTodayAsString()
-      @_settings.schedule.days.map( (day) =>
-        resource = day.resource if day.id is today
-      )
+    _activateAlarm: (params) =>
+      return null if typeof(params.resource) != 'string' or typeof(params.triggerSmartHome) != 'boolean'
       
-      data = {
-        response: 'Alarm activated',
-        today,
-        resource,
-        endPoint: 'http://' + @_settings.config.smartHome.user + ':' + @_settings.config.smartHome.passwd + '@' + @_settings.config.smartHome.host + @_settings.config.smartHome.endPoint
-      }
-      @emit('activateAlarm', data)
-      
-      delete data.endPoint
-      return data
-    
-    startServer: () =>
-      
-      @_settings.rest.map( (rest) =>
-        status = 200
-        if rest.http is "PUT"
-          status = 201
-        
-        @_httpServer[rest.http.toLowerCase()]('/api' + rest.endPoint + rest.params, (req, res) =>
-          res.status(status).send(@_restResponse(rest, req))
-        )
-      )
-      console.log('API enabled.')
-      @_httpServer.listen(@_PORT, () =>
-        console.log('Server is running on PORT:',@_PORT)
-      )
+      @emit('activateAlarm', params)
+      return @_responseObject("Alarm activated")
     
     _logUpdate: (item, update) ->
       console.log('Config update received:')
@@ -119,6 +115,9 @@ module.exports = () ->
     
     _emitConfigUpdate: () =>
       @emit('configUpdated', @_settings)
+    
+    _responseObject: (response) ->
+      return { response }
     
     _restResponse: (rest, req) =>
       response = {
@@ -134,16 +133,6 @@ module.exports = () ->
         response.data = data
       
       return response
-    
-    getTodayAsString: () =>
-      today = null
-      
-      date = new Date()
-      @_settings.schedule.days.map( (day) =>
-        if day.id is @_weekdays[date.getDay()]
-          today = day.id
-      )
-      return today
     
     destroy: () ->
       super()

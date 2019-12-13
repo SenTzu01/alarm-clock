@@ -1,12 +1,12 @@
-
 module.exports = () ->
   
   Promise = require('bluebird')
   fs = require('fs')
   restAPI = require('./restAPI')
-  http = Promise.promisifyAll(require('http'))
+  http = require('http')
   Mplayer = require('mplayer')
   Cron = require('node-schedule')
+  express = require('express')
   
   class Application
     
@@ -25,25 +25,37 @@ module.exports = () ->
         "saturday"
       ]
       
+      @_httpServer = express()
+      @_httpServer.use(express.static(@settings.config.httpServer.static_dir))
+      
       @_player = new Mplayer()
       
       @updateCron(@settings.schedule.days)
       
       @_rest = new restAPI()
-      @_rest.init(@settings)
+      @_rest.init(@_httpServer, @settings)
+      
       @_rest.on('stopAlarm', @stopAlarm)
       @_rest.on('activateAlarm', @activateAlarm)
       @_rest.on('configUpdated', @updateConfig)
+      @_rest.on('setVolume', @setVolume)
       
-      @_rest.startServer()
+      @_rest.startServer(@settings.config.httpServer.port)
     
     activateAlarm: (data) =>
-      # Activate the Alarm
       @_playAudio(data.resource)
-      
-      # Trigger Home automation
-      settings = require('../config.json')
-      endPoint = 'http://' + settings.config.smartHome.user + ':' + settings.config.smartHome.passwd + '@' + settings.config.smartHome.host + settings.config.smartHome.endPoint
+      if data.triggerSmartHome
+        @triggerSmartHome(@settings.config.smartHome)
+      console.log('Alarm activated.')
+    
+    stopAlarm: () =>
+      @_player.stop()
+      @_player.removeAllListeners('status')
+      clearTimeout(@_volIncrease)
+      console.log('Alarm stopped')
+    
+    triggerSmartHome: (server) =>
+      endPoint = 'http://' + server.user + ':' + server.passwd + '@' + server.host + server.trigger.endPoint
       http.get(endPoint , (res) =>
         contentType = res.headers['content-type']
         
@@ -65,20 +77,46 @@ module.exports = () ->
         )
         res.on('end', () =>
           data = JSON.parse(rawData)
-          if data.success
-            console.log("Home automation triggered.\n")
+          console.log('Smart home activation result: ' + data.success)
         )
         res.on('error', (err) =>
           console.error(err.message)
         )
       )
-      
-      console.log('Alarm clock activated.')
     
-    stopAlarm: () =>
-      @_player.stop()
-      @_player.removeAllListeners('status')
-      clearTimeout(@_volIncrease)
+    getPresence: (server) =>
+      return new Promise( (resolve, reject) =>
+        endPoint = 'http://' + server.user + ':' + server.passwd + '@' + server.host + server.presence.endPoint
+        http.get(endPoint , (res) =>
+          contentType = res.headers['content-type']
+          
+          if res.statusCode != 200
+            error = new Error('Request failed.\nStatus code: ' + res.statusCode)
+            
+          else if !/^application\/json/.test(contentType)
+            error = new Error('Invalid content type\nExpected application/json but got ' + contentType)
+          
+          if error?
+            console.error(error.message)
+            res.resume()
+            reject(error.message)
+          
+          res.setEncoding('utf8')
+          rawData = ''
+          res.on('data', (chunk) =>
+            rawData += chunk
+          )
+          res.on('end', () =>
+            data = JSON.parse(rawData)
+            resolve(data.variable.value)
+          
+          )
+          res.on('error', (err) =>
+            console.error(err.message)
+            reject(err)
+          )
+        )
+      )
     
     updateConfig: (settings) =>
       console.log('Reloading config...')
@@ -111,25 +149,25 @@ module.exports = () ->
       console.log('Updated Alarm Schedule:')
       console.log(obj.nextInvocation().toString()) for job, obj of @_jobs
     
+    setVolume: (volume) =>
+      @_player.volume(volume)
+    
     _playAudio: (resource) =>
-      @_volumeNext = 0
       @_increment = Math.round( (@settings.config.volume.max - @settings.config.volume.min) / (@settings.config.volume.increaseTimer / @settings.config.volume.increaseInterval) )
       
-      console.log('Increase interval: ' + @settings.config.volume.increaseInterval)
-      console.log('Volume increment: ' + @_increment)
+      @setVolume(@settings.config.volume.min)
+      @_volumeNext = @_increment
       
       @_player.openFile(resource)
-      @_player.volume(@settings.config.volume.min)
       @_player.play()
       
       @_volIncrease = setTimeout(@_autoIncreaseVolume, @settings.config.volume.increaseInterval*1000, @_volumeNext)
       
     _autoIncreaseVolume: (volume) =>
-      @_player.volume(volume)
+      @setVolume(volume)
       @_volumeNext += @_increment
       
       if @_volumeNext <= @settings.config.volume.max
-        console.log(@_volumeNext)
         @_volIncrease = setTimeout(@_autoIncreaseVolume, @settings.config.volume.increaseInterval*1000, @_volumeNext)
     
     _saveConfig: (settings, file) =>
