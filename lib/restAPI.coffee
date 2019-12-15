@@ -1,20 +1,35 @@
-module.exports = () ->
-  
   EventsEmitter = require('events')
-  express = require('express')
+  Express = require('express')
   
   class RestApi extends EventsEmitter
     
-    constructor: () ->
+    constructor: (@_httpServer, @_rest) ->
       super()
+      @_httpServer.use(Express.json())
+      @_httpServer.use(Express.urlencoded({ extended: true }))
+      @_callbacks = {}
     
-    init: (@_httpServer, @_settings) ->
-      @_httpServer.use(express.json())
-      @_httpServer.use(express.urlencoded({ extended: true }))
+    smartHome: (config) =>
+      @_ha = config
+      return @
+    
+    playback: (config) =>
+      @_playback = config
+      return @
+    
+    schedule: (config, cb) =>
+      @_schedule = config
+      @_callbacks.schedule = cb
+      return @
+    
+    config: (config, cb) =>
+      @_config = config
+      @_callbacks.config = cb
+      return @
     
     startServer: (port) =>
       
-      @_settings.rest.map( (rest) =>
+      @_rest.map( (rest) =>
         status = 200
         if rest.http is "PUT"
           status = 201
@@ -29,27 +44,32 @@ module.exports = () ->
       )
     
     getSmartHomeConfig: () =>
-      return @_settings.config.smartHome
+      return @_ha if @_ha?
+      return null
+    
+    getPlayback: () =>
+      return @_playback if @_playback?
+      return null
     
     getSchedule: () =>
-      return @_settings.schedule.days
+      return @_schedule if @_schedule?
+      return null
     
     getDay: (d) =>
+      return null if !@_schedule?.days?
+      
       day = null
-      @_settings.schedule.days.map( (item) =>
+      @_schedule.days.map( (item) =>
         day = item if d is item.id
       )
       return day
     
-    getConfig: () =>
-      return @_settings.config
-    
     updateSchedule: (id, update) =>
       day = null
       dayIndex = null
-      @_settings.schedule.days.map( (schedule, index) =>
-        if schedule.id is id
-          day = schedule
+      @_schedule.map( (item, index) =>
+        if item.id is id
+          day = item
           dayIndex = index
       )
       return null if !day
@@ -59,38 +79,36 @@ module.exports = () ->
       update.enabled  ?= day.enabled
       update.resource ?= day.resource
       
-      @_settings.schedule.days.splice(dayIndex, 1, update)
+      @_schedule.splice(dayIndex, 1, update)
+      @_callbacks.schedule(@_schedule)
       @_logUpdate(id, update)
-      @_emitConfigUpdate()
       
       return update
     
     updateConfig: (id, update) =>
-      success = true
-      settings = @_settings.config[id]
-      
+      success = false
+      settings = @_config[id]
       return null if !typeof(settings) is "object"
-      
-      for key, value of update
-        do (key, value) =>
-          if settings[key]?
-            settings[key] = value
-          else
-            success = false
-      
+
+      recurse = (config, update) =>
+        for prop of config
+          do (prop) =>
+            if Object.hasOwnProperty.call(config, prop) && Object.hasOwnProperty.call(update, prop)
+              if typeof(config[prop]) is "object" && typeof(update[prop]) is "object"
+                recurse(config[prop], update[prop])
+              else
+                success = true
+                config[prop] = update[prop]
+        return config
+      recurse(settings, update)
+
       return null if !success
       
-      @_settings.config[id] = settings
-      @_logUpdate(id, @_settings.config[id])
-      @_emitConfigUpdate()
+      @_config[id] = settings
+      @_callbacks.config(@_config)
+      @_logUpdate(id, @_config[id])
       
       return settings
-    
-    setVolume: (id, params) =>
-      return null if typeof(params.value) != "number" || params.value > @_settings.config.volume.max || params.value < @_settings.config.volume.min
-      
-      @emit('setVolume', params.value)
-      return @_responseObject("Volume set")
     
     toggleAlarm: (id, params) =>
       return @_activateAlarm(params) if id is "start"
@@ -113,9 +131,6 @@ module.exports = () ->
       console.log(item)
       console.log(update)
     
-    _emitConfigUpdate: () =>
-      @emit('configUpdated', @_settings)
-    
     _responseObject: (response) ->
       return { response }
     
@@ -137,4 +152,4 @@ module.exports = () ->
     destroy: () ->
       super()
   
-  return new RestApi
+  module.exports = RestApi

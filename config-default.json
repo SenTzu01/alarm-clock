@@ -79,57 +79,54 @@
       "fallback": "<absolute-path-to-local-audio-file>"
     }
   },
-  "schedule": {
-    "days": [
-      {
-        "id": "monday",
-        "time": "08:00",
-        "enabled": true,
-        "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3",
-        "triggerSmartHome": true
-      },
-      {
-        "enabled": true,
-        "id": "tuesday",
-        "time": "08:00",
-        "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3",
-        "triggerSmartHome": true
-      },
-      {
-        "id": "wednesday",
-        "time": "08:00",
-        "enabled": true,
-        "resource": "https://2083.live.streamtheworld.com/VERONICA.mp3",
-        "triggerSmartHome": true
-      },
-      {
-        "id": "thursday",
-        "time": "08:00",
-        "enabled": true,
-        "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3",
-        "triggerSmartHome": true
-      },
-      {
-        "enabled": true,
-        "id": "friday",
-        "time": "08:00",
-        "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3",
-        "triggerSmartHome": true
-      },
-      {
-        "enabled": false,
-        "time": "10:00",
-        "id": "saturday",
-        "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3",
-        "triggerSmartHome": true
-      },
-      {
-        "enabled": false,
-        "time": "10:00",
-        "id": "sunday",
-        "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3",
-        "triggerSmartHome": true
-      }
-    ]
-  }
+  "schedule": [
+    {
+      "id": "monday",
+      "time": "08:00",
+      "enabled": true,
+      "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3",
+      "triggerSmartHome": true
+    },
+    {
+      "enabled": true,
+      "id": "tuesday",
+      "time": "08:00",
+      "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3",
+      "triggerSmartHome": true
+    },
+    {
+      "id": "wednesday",
+      "time": "08:00",
+      "enabled": true,
+      "resource": "https://2083.live.streamtheworld.com/VERONICA.mp3",
+      "triggerSmartHome": true
+    },
+    {
+      "id": "thursday",
+      "time": "08:00",
+      "enabled": true,
+      "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3",
+      "triggerSmartHome": true
+    },
+    {
+      "enabled": true,
+      "id": "friday",
+      "time": "09:30",
+      "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3",
+      "triggerSmartHome": true
+    },
+    {
+      "enabled": false,
+      "time": "10:00",
+      "id": "saturday",
+      "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3",
+      "triggerSmartHome": true
+    },
+    {
+      "enabled": false,
+      "id": "sunday",
+      "time": "11:00",
+      "resource": "https://20873.live.streamtheworld.com/VERONICA.mp3"
+    }
+  ]
 }

@@ -1,12 +1,11 @@
-module.exports = () ->
-  
   Promise = require('bluebird')
   fs = require('fs')
   restAPI = require('./restAPI')
+  Alarm = require('./Alarm')
   http = require('http')
-  Mplayer = require('mplayer')
+  #Mplayer = require('mplayer')
   Cron = require('node-schedule')
-  express = require('express')
+  Express = require('express')
   
   class Application
     
@@ -25,35 +24,38 @@ module.exports = () ->
         "saturday"
       ]
       
-      @_httpServer = express()
-      @_httpServer.use(express.static(@settings.config.httpServer.static_dir))
+      @_alarm = new Alarm()
       
-      @_player = new Mplayer()
-      @updateCron(@settings.schedule.days)
+      @updateCron(@settings.schedule)
       
-      @_rest = new restAPI()
-      @_rest.init(@_httpServer, @settings)
+      @_httpServer = new Express()
+      @_httpServer.use(Express.static(@settings.config.httpServer.static_dir))
       
-      @_rest.on('stopAlarm', @stopAlarm)
-      @_rest.on('activateAlarm', @activateAlarm)
-      @_rest.on('configUpdated', @updateConfig)
-      @_rest.on('setVolume', @setVolume)
+      @_rest = new restAPI(@_httpServer, @settings.rest)
+      .smartHome(@settings.config.smartHome)
+      .playback(@settings.config.playback)
+      .schedule(@settings.schedule, @updateSchedule)
+      .config(@settings.config, @updateConfig)
+      .on('stopAlarm', @stopAlarm)
+      .on('activateAlarm', @activateAlarm)
+      .on('setVolume', @setVolume)
+      .startServer(@settings.config.httpServer.port)
       
-      @_rest.startServer(@settings.config.httpServer.port)
-    
     activateAlarm: (data) =>
-      @_playAudio(data.resource)
-      if data.triggerSmartHome
-        @triggerSmartHome(@settings.config.smartHome)
+      @_alarm.range(@settings.config.playback.volume.min, @settings.config.playback.volume.max)
+      .timer(@settings.config.playback.volume.increaseTimer)
+      .localAudio(@settings.config.playback.fallback)
+      .start(data.resource)
+      
+      @triggerSmartHome() if data.triggerSmartHome # @settings.config.smartHome
+      
       console.log('Alarm activated.')
     
     stopAlarm: () =>
-      @_player.stop()
-      @_player.removeAllListeners('status')
-      clearTimeout(@_volIncrease)
-      console.log('Alarm stopped')
+      @_alarm.stop()
     
     triggerSmartHome: (server) =>
+      server = server || @settings.config.smartHome
       endPoint = 'http://' + server.user + ':' + server.passwd + '@' + server.host + server.trigger.endPoint
       http.get(endPoint , (res) =>
         contentType = res.headers['content-type']
@@ -117,11 +119,19 @@ module.exports = () ->
         )
       )
     
-    updateConfig: (settings) =>
+    updateSchedule: (config) =>
+      @settings.schedule = config if config?
+      @updateSettings(@settings)
+    
+    updateConfig: (config) =>
+      @settings.config = config if config?
+      @updateSettings(@settings)
+    
+    updateSettings: (settings) =>
       console.log('Reloading config...')
-      @_saveConfig(settings)
-      @settings = require(@_appConfig)
-      @updateCron(@settings.schedule.days)
+      @settings = settings
+      @_saveConfig(@settings)
+      @updateCron(@settings.schedule)
     
     updateCron: (days) =>
       days.map( (day) =>
@@ -149,50 +159,7 @@ module.exports = () ->
       console.log(obj.nextInvocation().toString()) for job, obj of @_jobs
     
     setVolume: (volume) =>
-      @_player.volume(volume)
-      console.log('Volume set to: ' + volume)
-    
-    _playAudio: (resource) =>
-      playing = false
-      @_player.once('start', () => playing = true )
-      @_player.stop()
-      @_player.volume(@settings.config.playback.volume.min)
-      @_player.openFile(resource)
-      @_player.play()
-      
-      # Workaround as MPlayer has no decent error events. So what if internet connection is not available?
-      # Check if playback started after 2 seconds, else play backup file
-      setTimeout( ( () =>
-        if !playing
-          console.log('Unable to play: ' + resource)
-          @stopAlarm()
-          fs.access(@settings.config.playback.fallback, fs.constants.R_OK, (err) =>
-            if err?
-              console.log('Panic! Cannot open ' + @settings.config.playback.fallback + '. You are on your own now!')
-            else
-              console.log('Falling back to: ' + @settings.config.playback.fallback)
-              @_playAudio(@settings.config.playback.fallback)
-          )
-        
-        else
-          console.log('Playback of ' + resource + ' started successfully...')
-      ), 2000)
-      
-      interval = Math.round(@settings.config.playback.volume.increaseTimer / (@settings.config.playback.volume.max - @settings.config.playback.volume.min) * 1000)
-      @_increaseVolume(interval)
-    
-    _increaseVolume: (interval) =>
-      volume = @settings.config.playback.volume.min + 1
-      @_player.volume(volume)
-      
-      autoIncrease = (volume) =>
-        console.log(volume)
-        @_player.volume(volume)
-        
-        volume += 1
-        if volume <= @settings.config.playback.volume.max
-          @_volIncrease = setTimeout(autoIncrease, interval, volume)
-      @_volIncrease = setTimeout(autoIncrease, interval, volume)
+      @_alarm.volume(volume)
     
     _saveConfig: (settings, file) =>
       settings ?= @settings
@@ -201,15 +168,15 @@ module.exports = () ->
       fs.writeFile(file, JSON.stringify(settings, null, 2), (err) =>
         if err?
           return console.error('Error writing config file:' + err)
-        )
-    
+        else
+          console.log('Settings saved to: ' + file)
+      )
     destroy: () ->
       return new Promise( (resolve, reject) =>
-        @_player.removeAllListeners('status')
         @_rest.removeAllListeners('stopAlarm')
         @_rest.removeAllListeners('activateAlarm')
         @_rest.removeAllListeners('configUpdated')
         resolve()
       )
   
-  return new Application
+  module.exports = Application
